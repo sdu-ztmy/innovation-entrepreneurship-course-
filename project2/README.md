@@ -89,3 +89,4 @@
 
 ## 7.测试结果
 
+![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/blob/main/project2/watermark_robustness_results.png)
