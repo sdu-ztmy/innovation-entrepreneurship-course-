@@ -141,7 +141,8 @@ SM4是中国国家密码管理局于2012年发布的商用密码标准算法，�
 
 ## 运行结果
 
-![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/blob/main/project1/result/e516e2ce672a9fbdc9cf13f82ac01e4f.png)
+![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/blob/main/project1/result/e5b89a7dfc49af2c76e336d3764e0e4f.png)
+
 
 # SM4-GCM 加密算法实现解析
 
@@ -251,6 +252,5 @@ GCM = GMAC(认证) + CTR(加密)，提供：
 - 支持变长数据加密
 
 ## 运行结果
-
-![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/blob/main/project1/result/e5b89a7dfc49af2c76e336d3764e0e4f.png)
+![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/blob/main/project1/result/e516e2ce672a9fbdc9cf13f82ac01e4f.png)
 
