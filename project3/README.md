@@ -33,24 +33,7 @@ Poseidon2 是一种 **海绵构造（Sponge Construction）** 的变种，但在
 
 ---
 
-## **4. 关键组件**
-### **(1) S-box（非线性层）**
-- 计算 \(out = in^5\)，即输入的五次幂。
-- 作用：
-  - 引入非线性，使逆向计算困难。
-  - 增强哈希函数的抗碰撞性。
-
-### **(2) 轮常数（Round Constants, RC）**
-- 每轮使用不同的常数，防止攻击者利用对称性进行攻击。
-- 类似于 AES 的轮密钥，但在这里是固定的。
-
-### **(3) MDS 矩阵（线性扩散层）**
-- 一个 2×2 矩阵，用于混合状态的两个部分。
-- 确保 **雪崩效应（Avalanche Effect）**，即微小的输入变化会导致输出完全不同。
-
----
-
-## **5. 安全性分析**
+## **4. 安全性分析**
 1. **抗碰撞性**：
    - 由于 S-box 的非线性特性和 MDS 矩阵的扩散性，很难找到两个不同的输入产生相同的输出。
    
@@ -62,16 +45,9 @@ Poseidon2 是一种 **海绵构造（Sponge Construction）** 的变种，但在
 
 ---
 
-## **6. 适用场景**
-- **零知识证明（ZKP）**：Poseidon 是 zk-SNARKs 中最受欢迎的哈希函数之一，因为它的算术电路较小。
-- **默克尔树（Merkle Trees）**：适用于需要高效哈希的区块链数据结构。
-- **隐私保护计算**：如 Tornado Cash 等隐私协议使用 Poseidon 进行高效证明。
+## **5. 运行结果**
 
----
-
-## **7. 运行结果**
-
-https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/blob/main/project3/img/14fa8bed53b44ae5d4cd7e459200666c.png
+![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/blob/main/project3/img/14fa8bed53b44ae5d4cd7e459200666c.png)
 
 # 用Groth16算法生成证明
 
@@ -100,4 +76,5 @@ snarkjs groth16 verify verification_key.json public.json proof.json
 
 ## 8. 运行结果 
 
-https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/blob/main/project3/img/199b8e25d2bd473cfe05accf323839da.png
+
+![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/blob/main/project3/img/199b8e25d2bd473cfe05accf323839da.png)
