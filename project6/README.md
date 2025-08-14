@@ -150,5 +150,5 @@
 ## 9. 运行结果
 两方在不泄露各自完整数据集的情况下，成功计算出了交集元素的权重和，并且结果与直接明文计算的结果一致：
 
-
+![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/blob/main/project6/result/399e7c45b1896c50ac04f3e8187aa398.png)
 
