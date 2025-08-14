@@ -93,9 +93,9 @@
   这使得 $P1$ 能通过集合成员关系测试识别交集。
 * 同态性保证：
 
-  $$
-  \prod_{j\in J}\text{Enc}(t_j) = \text{Enc}\Big(\sum_{j\in J} t_j\Big)
-  $$
+$$
+\prod_{j\in J}\text{Enc}(t_j) = \text{Enc}\Big(\sum_{j\in J} t_j\Big)
+$$
 
   因此 $P2$ 解密后得到正确的交集和。
 
