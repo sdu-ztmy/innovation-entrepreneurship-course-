@@ -130,7 +130,6 @@ static void sm3_hash(const uint8_t *in, size_t inlen, uint8_t out[32]) {
     sm3_final(&ctx, out);
 }
 
-/* -------------------- Merkle tree utilities -------------------- */
 
 #define HASH_LEN 32
 typedef struct {
@@ -150,7 +149,6 @@ static void hash_leaf(const uint8_t *data, size_t datalen, uint8_t out[HASH_LEN]
     free(buf);
 }
 
-/* Hash node: Hash(0x01 || left || right) */
 static void hash_node(const uint8_t left[HASH_LEN], const uint8_t right[HASH_LEN], uint8_t out[HASH_LEN]) {
     uint8_t buf[1 + HASH_LEN + HASH_LEN];
     buf[0] = 0x01;
@@ -159,7 +157,6 @@ static void hash_node(const uint8_t left[HASH_LEN], const uint8_t right[HASH_LEN
     sm3_hash(buf, 1 + HASH_LEN + HASH_LEN, out);
 }
 
-/* Compare byte arrays lexicographically */
 static int lexcmp(const uint8_t *a, size_t alen, const uint8_t *b, size_t blen) {
     size_t minlen = alen < blen ? alen : blen;
     int r = memcmp(a, b, minlen);
@@ -169,13 +166,6 @@ static int lexcmp(const uint8_t *a, size_t alen, const uint8_t *b, size_t blen) 
     return 0;
 }
 
-/* -------------------- Merkle tree construction --------------------
-   Approach:
-   - Leaves are sorted lexicographically by their data (not by precomputed leaf hash).
-   - We compute leaf hashes in sorted order, then iteratively compute upper levels.
-   - For combining odd node, we duplicate the last node (RFC6962 treats it consistent with many Merkle tree implementations).
-   - We store all levels as vectors of Hash.
-*/
 
 typedef struct {
     /* Each level is an array of Hash, level 0 is leaves, level L is root level (size 1) */
@@ -184,7 +174,6 @@ typedef struct {
     int level_count;
 } MerkleTree;
 
-/* Free tree */
 static void merkle_free(MerkleTree *mt) {
     if(!mt) return;
     for(int i=0;i<mt->level_count;i++){
@@ -195,19 +184,15 @@ static void merkle_free(MerkleTree *mt) {
     free(mt);
 }
 
-/* Build merkle tree from array of leaf byte buffers.
-   leaves: pointer to array of (pointer,size) pairs.
-*/
+
 typedef struct {
     uint8_t *data;
     size_t len;
 } Leaf;
 
 static MerkleTree *merkle_build_sorted(Leaf *leaves, size_t nleaves) {
-    // Edge case: zero leaves -> define empty root as hash of empty? We'll handle n>=1 in our usage.
     if(nleaves == 0) return NULL;
 
-    // Sort leaves by data lexicographically
     qsort(leaves, nleaves, sizeof(Leaf), (int(*)(const void*,const void*)) ( +[](const Leaf *a, const Leaf *b)->int {
         size_t minlen = a->len < b->len ? a->len : b->len;
         int r = memcmp(a->data, b->data, minlen);
@@ -217,7 +202,6 @@ static MerkleTree *merkle_build_sorted(Leaf *leaves, size_t nleaves) {
         return 0;
     }));
 
-    // Compute maximum levels: ceil(log2(n))+1
     int lvl = 0;
     size_t tmp = nleaves;
     while(tmp > 1) { tmp = (tmp + 1) / 2; lvl++; }
@@ -228,14 +212,14 @@ static MerkleTree *merkle_build_sorted(Leaf *leaves, size_t nleaves) {
     mt->level_sizes = (size_t*)calloc(level_count, sizeof(size_t));
     mt->level_count = level_count;
 
-    // level 0: leaves
+
     mt->level_sizes[0] = nleaves;
     mt->levels[0] = (Hash*)malloc(sizeof(Hash) * mt->level_sizes[0]);
     for(size_t i=0;i<nleaves;i++){
         hash_leaf(leaves[i].data, leaves[i].len, mt->levels[0][i].h);
     }
 
-    // build upper levels
+
     for(int L=1; L<level_count; L++){
         size_t prev_size = mt->level_sizes[L-1];
         size_t cur_size = (prev_size + 1) / 2;
@@ -260,17 +244,14 @@ static MerkleTree *merkle_build_sorted(Leaf *leaves, size_t nleaves) {
     return mt;
 }
 
-/* Get root hash */
+
 static void merkle_root(const MerkleTree *mt, uint8_t out[HASH_LEN]) {
     if(!mt) return;
     Hash *root = mt->levels[mt->level_count - 1];
     memcpy(out, root[0].h, HASH_LEN);
 }
 
-/* Inclusion proof element:
-   - sibling hash
-   - sibling_is_left (1 if sibling is on the left of the node, 0 if sibling is on right)
-*/
+
 typedef struct {
     uint8_t sibling[HASH_LEN];
     int sibling_is_left;
@@ -282,7 +263,6 @@ typedef struct {
     size_t leaf_index; // index in sorted leaves
 } InclusionProof;
 
-/* Build inclusion proof (audit path) for a leaf at sorted index idx (0-based) */
 static InclusionProof merkle_inclusion_proof(const MerkleTree *mt, size_t idx) {
     InclusionProof proof;
     proof.elems = NULL;
@@ -292,7 +272,6 @@ static InclusionProof merkle_inclusion_proof(const MerkleTree *mt, size_t idx) {
     if(!mt) return proof;
     if(idx >= mt->level_sizes[0]) return proof;
 
-    // number of levels above leaves
     int levels_above = mt->level_count - 1;
     proof.elems = (ProofElement*)malloc(sizeof(ProofElement) * levels_above);
     size_t cur_idx = idx;
@@ -330,12 +309,7 @@ static void free_inclusion_proof(InclusionProof *p) {
     p->elem_count = 0;
 }
 
-/* Verify inclusion proof:
-   - leaf_data, leaf_len: original leaf bytes (not hashed)
-   - proof: inclusion proof
-   - root: expected root hash
-   Returns 1 if valid, 0 if not.
-*/
+
 static int merkle_verify_inclusion(const uint8_t *leaf_data, size_t leaf_len, const InclusionProof *proof, const uint8_t root[HASH_LEN]) {
     uint8_t cur[HASH_LEN];
     hash_leaf(leaf_data, leaf_len, cur);
@@ -357,12 +331,7 @@ static int merkle_verify_inclusion(const uint8_t *leaf_data, size_t leaf_len, co
     return memcmp(cur, root, HASH_LEN) == 0;
 }
 
-/* Non-inclusion proof:
-   - For a query value q, find insertion position in sorted leaves.
-   - If q equals a leaf, then it's actually an inclusion proof (we return that).
-   - If q not found, find left neighbor (L) and right neighbor (R) (zero or one may be absent).
-   - Return inclusion proofs for neighbor(s) plus their indices and values.
-*/
+
 typedef struct {
     // indices and data for neighbors; elem_count may be 0,1,2
     InclusionProof left_proof;
@@ -376,15 +345,12 @@ typedef struct {
     int has_right;
 } NonInclusionProof;
 
-/* Build non-inclusion proof: leaves_data_sorted are pointers to leaf raw bytes in sorted order
-   Note: This function expects the caller to maintain the array of sorted leaves (Leaf *leaves)
-*/
 static NonInclusionProof merkle_noninclusion_proof(const MerkleTree *mt, Leaf *sorted_leaves, size_t nleaves, const uint8_t *q, size_t qlen) {
     NonInclusionProof np;
     memset(&np, 0, sizeof(np));
     np.has_left = np.has_right = 0;
 
-    // binary search for insertion point or equal
+
     size_t lo = 0, hi = nleaves;
     while(lo < hi) {
         size_t mid = lo + (hi - lo) / 2;
@@ -404,7 +370,7 @@ static NonInclusionProof merkle_noninclusion_proof(const MerkleTree *mt, Leaf *s
         np.left_proof = merkle_inclusion_proof(mt, ins);
         return np;
     }
-    // left neighbor is ins-1 if ins>0
+
     if(ins > 0) {
         size_t left_idx = ins - 1;
         np.has_left = 1;
@@ -412,7 +378,6 @@ static NonInclusionProof merkle_noninclusion_proof(const MerkleTree *mt, Leaf *s
         np.left_len = sorted_leaves[left_idx].len;
         np.left_proof = merkle_inclusion_proof(mt, left_idx);
     }
-    // right neighbor is ins if ins < nleaves
     if(ins < nleaves) {
         size_t right_idx = ins;
         np.has_right = 1;
@@ -429,14 +394,8 @@ static void free_noninclusion_proof(NonInclusionProof *p) {
     if(p->has_right) free_inclusion_proof(&p->right_proof);
 }
 
-/* Verify non-inclusion proof:
-   - If left_proof or right_proof exists, verify they indeed produce the root.
-   - Check that q is strictly between left_data and right_data (if both exist)
-     or less than right_data (if only right exists) or greater than left_data (if only left exists).
-   - If q equals some returned neighbor, then it's actually inclusion.
-*/
+
 static int merkle_verify_noninclusion(const uint8_t *q, size_t qlen, const NonInclusionProof *np, const uint8_t root[HASH_LEN]) {
-    // verify neighbor proofs
     if(np->has_left) {
         if(!merkle_verify_inclusion(np->left_data, np->left_len, &np->left_proof, root)) {
             return 0;
@@ -447,7 +406,6 @@ static int merkle_verify_noninclusion(const uint8_t *q, size_t qlen, const NonIn
             return 0;
         }
     }
-    // now check ordering
     if(np->has_left && np->has_right) {
         // left < q < right
         if(!(lexcmp(np->left_data, np->left_len, q, qlen) < 0 && lexcmp(q, qlen, np->right_data, np->right_len) < 0)) return 0;
@@ -470,7 +428,6 @@ int main() {
     const size_t NLEAVES = 100000; // 10w
     printf("Building Merkle tree with %zu leaves...\n", NLEAVES);
 
-    // allocate and fill leaves: simple predictable content "leaf-<i>"
     Leaf *leaves = (Leaf*)malloc(sizeof(Leaf) * NLEAVES);
     if(!leaves) { fprintf(stderr, "malloc leaves failed\n"); return 1; }
     // We'll keep the data allocated so pointers remain valid after sorting
@@ -482,7 +439,6 @@ int main() {
         memcpy(leaves[i].data, buf, leaves[i].len);
     }
 
-    // Build merkle tree on sorted leaves (merkle_build_sorted sorts in-place)
     MerkleTree *mt = merkle_build_sorted(leaves, NLEAVES);
     if(!mt) { fprintf(stderr, "merkle build failed\n"); return 1; }
 
@@ -492,11 +448,8 @@ int main() {
     print_hex(root, HASH_LEN);
     printf("\n");
 
-    // Example inclusion check: pick a random existing leaf index (after sorting, leaf content changed ordering; for demo we pick value "leaf-00000123")
     const char *exist_sample = "leaf-00000123";
     printf("\n--- Inclusion proof for \"%s\" ---\n", exist_sample);
-
-    // find it in sorted array
     size_t lo = 0, hi = NLEAVES;
     size_t found = (size_t)-1;
     while(lo < hi) {
@@ -517,7 +470,6 @@ int main() {
         free_inclusion_proof(&p);
     }
 
-    // Example non-inclusion checks
     const char *nonexist1 = "leaf-99999999"; // bigger than any
     const char *nonexist2 = "leaf-00000005"; // likely exists; but treat as demonstration
     const char *nonexist3 = "leaf-00000XYZ"; // not present
@@ -543,7 +495,6 @@ int main() {
         free_noninclusion_proof(&np);
     }
 
-    // cleanup
     merkle_free(mt);
     for(size_t i=0;i<NLEAVES;i++) free(leaves[i].data);
     free(leaves);
