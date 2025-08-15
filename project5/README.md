@@ -150,7 +150,7 @@ $$
 
 # 7 运行结果
 
-![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/new/main/project5/result/1.png)
+![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/blob/main/project5/result/1.png)
 
 从测试结果可以看出，未优化的 SM2（仿射坐标+双加）整体性能最差；优化后，雅可比坐标配合双加法的速度提升最明显，标量乘法、密钥生成和签名验证均是最快的方案；wNAF 窗口法相比雅可比坐标慢一些，但仍明显优于未优化版本；蒙哥马利阶梯法在此实现中反而比未优化版本更慢，说明它在该曲线和参数下并未带来预期的性能优势。
 
@@ -227,7 +227,7 @@ $$
 ---
 
 ## 5. 实际运行结果
-![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/new/main/project5/result/2.png)
+![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/blob/main/project5/result/2.png)
 
 # SM2 重复随机数攻击与签名伪造实验报告
 
@@ -287,4 +287,4 @@ $$
 ---
 
 ## 5. 实际运行结果
-![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/new/main/project5/result/3.png)
+![image](https://github.com/sdu-ztmy/innovation-entrepreneurship-course-/blob/main/project5/result/3.png)
