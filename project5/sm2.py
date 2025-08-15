@@ -1,24 +1,7 @@
-# SM2 implementation with performance comparison of different ECC scalar multiplication algorithms.
-# - Baseline: affine coordinates, double-and-add scalar multiplication
-# - Improvement 1: Jacobian coordinates (avoid inverses)
-# - Improvement 2: Windowed wNAF scalar multiplication
-# - Improvement 3: Montgomery ladder (constant-time)
-#
-# The code implements:
-#  - SM2 curve parameters (GM/T 0003.5-2012)
-#  - Point operations (affine & jacobian)
-#  - Scalar multiplication variants
-#  - Key generation, signing (SM2), verification
-#  - Performance tests comparing the time for keygen, sign, verify across methods
-#
-# Note: This is a pedagogical implementation in pure Python for clarity and benchmarking.
-# It is NOT optimized for production use. Use well-tested libraries (e.g., OpenSSL, gmssl) for real crypto.
 import os, sys, time, hashlib, secrets, math
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-# ---------- SM2 domain parameters (GM/T 0003.5-2012) ----------
-# Values taken from standard references (public domain)
 p = int("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF", 16)
 a = int("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC", 16)
 b = int("28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D940E93", 16)
@@ -27,13 +10,11 @@ gy = int("BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0", 16)
 n = int("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123", 16)
 h = 1
 
-# sanity check: ensure point is on curve
 def is_on_curve(x: int, y: int) -> bool:
     return (y * y - (x * x * x + a * x + b)) % p == 0
 
 assert is_on_curve(gx, gy), "Base point not on curve (params wrong)"
 
-# ---------- Basic modular arithmetic ----------
 def mod_inv(x: int, m: int = p) -> int:
     # Python's pow with -1 doesn't work; use extended gcd via pow(x, m-2, m) only if m is prime
     # p is prime here, so:
@@ -43,7 +24,6 @@ def mod_sqrt(a_val: int, p_mod: int = p) -> Optional[int]:
     # Not used in this implementation, placeholder
     return None
 
-# ---------- Affine point representation ----------
 AffinePoint = Tuple[int, int]
 O = (None, None)  # point at infinity
 
@@ -74,8 +54,6 @@ def affine_mul(k: int, P: AffinePoint) -> AffinePoint:
         k >>= 1
     return R
 
-# ---------- Jacobian coordinates for faster operations ----------
-# Jacobian point is (X, Y, Z) representing affine (X/Z^2, Y/Z^3)
 JacPoint = Tuple[int, int, int]
 J_O = (0, 1, 0)  # point at infinity in Jacobian
 
@@ -130,7 +108,6 @@ def jac_add(P: JacPoint, Q: JacPoint) -> JacPoint:
     return (X3, Y3, Z3)
 
 def jac_mul(k: int, P_aff: AffinePoint) -> AffinePoint:
-    # convert to jacobian and do double-and-add in jacobian coordinates
     P = to_jac(P_aff)
     R = J_O
     while k > 0:
@@ -142,7 +119,6 @@ def jac_mul(k: int, P_aff: AffinePoint) -> AffinePoint:
 
 # ---------- wNAF windowed scalar multiplication ----------
 def int_to_wnaf(k: int, width: int) -> list:
-    # return signed-digit representation (wNAF)
     if k == 0:
         return [0]
     w = width
@@ -162,7 +138,6 @@ def int_to_wnaf(k: int, width: int) -> list:
     return naf
 
 def precompute_window(P: AffinePoint, width: int) -> dict:
-    # precompute odd multiples: P,3P,5P,... up to 2^{w-1}-1
     max_odd = (1 << (width - 1)) - 1
     table = {}
     table[1] = P
@@ -202,7 +177,6 @@ def wnaf_mul(k: int, P: AffinePoint, width: int = 5) -> AffinePoint:
 
 # ---------- Montgomery ladder (constant-time) ----------
 def montgomery_ladder_mul(k: int, P: AffinePoint) -> AffinePoint:
-    # simple implementation of montgomery ladder using affine ops (not fastest but constant-time pattern)
     R0 = O
     R1 = P
     for i in reversed(range(k.bit_length())):
@@ -216,14 +190,10 @@ def montgomery_ladder_mul(k: int, P: AffinePoint) -> AffinePoint:
     return R0
 
 # ---------- SM2 signature (simplified) ----------
-# SM2 signature uses ZA = Hash(ENTL || ID || a || b || Gx || Gy || Px || Py) then hash ZA || M
 def sm3_hash(msg: bytes) -> bytes:
-    # SM3 is a Chinese hash standard; for demonstration here we'll use SHA256 as a placeholder
-    # NOTE: For conformance, replace with a SM3 implementation.
     return hashlib.sha256(msg).digest()
 
 def ZA_hash(ID: bytes, Px: AffinePoint) -> bytes:
-    # construct the standard ZA using domain parameters; ID typically b'1234567812345678'
     ENTLa = (len(ID) * 8).to_bytes(2, 'big')
     a_bytes = a.to_bytes(32, 'big')
     b_bytes = b.to_bytes(32, 'big')
@@ -235,8 +205,6 @@ def ZA_hash(ID: bytes, Px: AffinePoint) -> bytes:
     return sm3_hash(msg)
 
 def sm2_sign(msg: bytes, d: int, k_func, scalar_mul_func) -> Tuple[int,int]:
-    # k_func: function to get ephemeral k (returns integer in [1, n-1])
-    # scalar_mul_func: function(k, P) -> AffinePoint for scalar mult
     ID = b'1234567812345678'
     Px = scalar_mul_func(d, (gx, gy))
     ZA = ZA_hash(ID, Px)
@@ -268,12 +236,10 @@ def sm2_verify(msg: bytes, P: AffinePoint, signature: Tuple[int,int], scalar_mul
     R = (e + xr) % n
     return R == r
 
-# ---------- Helpers ----------
 def random_k() -> int:
     # secure random in [1, n-1]
     return secrets.randbelow(n - 1) + 1
 
-# deterministic simple RNG for reproducibility in some tests
 def make_k_func():
     def kgen():
         return random_k()
@@ -296,7 +262,6 @@ def time_operation(func, *args, loops=50):
     t1 = time.perf_counter()
     return (t1 - t0) / loops
 
-# Wrap scalar multiplication for uniform interface
 def scalar_affine(k, P): return affine_mul(k, P)
 def scalar_jac(k, P): return jac_mul(k, P)
 def scalar_wnaf(k, P): return wnaf_mul(k, P, width=5)
@@ -378,5 +343,6 @@ def benchmark():
 
 if __name__ == "__main__":
     res = benchmark()
+
 
 
